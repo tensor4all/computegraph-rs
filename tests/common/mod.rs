@@ -1,4 +1,4 @@
-use computegraph::{GraphOp, Operand};
+use computegraph::GraphOp;
 
 /// Scalar operations for testing.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -37,50 +37,5 @@ impl GraphOp for ScalarOp {
             ScalarOp::Neg => vec![-inputs[0]],
             ScalarOp::Dup => vec![*inputs[0], *inputs[0]],
         }
-    }
-}
-
-impl Operand for f64 {
-    fn zero(_shape: &[usize]) -> Self {
-        0.0
-    }
-
-    fn one(_shape: &[usize]) -> Self {
-        1.0
-    }
-
-    fn reshape(&self, _shape: &[usize]) -> Self {
-        *self
-    }
-
-    fn broadcast_in_dim(&self, _shape: &[usize], _dims: &[usize]) -> Self {
-        *self
-    }
-
-    fn add(&self, other: &Self) -> Self {
-        self + other
-    }
-
-    fn multiply(&self, other: &Self) -> Self {
-        self * other
-    }
-
-    fn reduce_sum(&self, _axes: &[usize]) -> Self {
-        *self
-    }
-
-    fn dot_general(
-        &self,
-        other: &Self,
-        _lhs_contracting: &[usize],
-        _rhs_contracting: &[usize],
-        _lhs_batch: &[usize],
-        _rhs_batch: &[usize],
-    ) -> Self {
-        self * other
-    }
-
-    fn conj(&self) -> Self {
-        *self
     }
 }
