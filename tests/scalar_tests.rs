@@ -8,7 +8,7 @@ use computegraph::fragment::FragmentBuilder;
 use computegraph::interner::KeyInterner;
 use computegraph::materialize::materialize_merge;
 use computegraph::resolve::{resolve, ValDef};
-use computegraph::{GlobalOpKey, GlobalValKey, GraphOp, OpMode, ValRef};
+use computegraph::{EvalGraphOp, GlobalOpKey, GlobalValKey, GraphOp, OpMode, ValRef};
 
 // === ScalarOp smoke tests ===
 

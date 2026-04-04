@@ -1,4 +1,4 @@
-use computegraph::GraphOp;
+use computegraph::{EvalGraphOp, GraphOp};
 
 /// Scalar operations for testing.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -28,7 +28,9 @@ impl GraphOp for ScalarOp {
             _ => 1,
         }
     }
+}
 
+impl EvalGraphOp for ScalarOp {
     fn eval(&self, _ctx: &mut (), inputs: &[&f64]) -> Vec<f64> {
         match self {
             ScalarOp::Add => vec![inputs[0] + inputs[1]],
