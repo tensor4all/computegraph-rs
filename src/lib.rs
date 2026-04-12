@@ -9,5 +9,5 @@ pub mod resolve;
 pub mod traits;
 pub mod types;
 
-pub use traits::{EvalGraphOp, GraphOp};
+pub use traits::{EvalGraphOp, GraphOp, OpEmitter};
 pub use types::{GlobalOpKey, GlobalValKey, LocalOpId, LocalValId, OpMode, ValRef};
