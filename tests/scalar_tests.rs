@@ -1,5 +1,7 @@
 mod common;
 
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 use common::ScalarOp;
@@ -74,19 +76,48 @@ fn interner_get_returns_none_for_unknown() {
 fn interner_derived_key() {
     let mut interner = KeyInterner::<ScalarOp>::new();
     let key = GlobalValKey::<ScalarOp>::Derived {
-        op: GlobalOpKey {
-            primitive: ScalarOp::Add,
-            inputs: vec![
+        op: Arc::new(GlobalOpKey::new(
+            ScalarOp::Add,
+            vec![
                 GlobalValKey::Input("x".to_string()),
                 GlobalValKey::Input("y".to_string()),
             ],
-            mode: OpMode::Primal,
-        },
+            OpMode::Primal,
+        )),
         output_slot: 0,
     };
     let id = interner.intern(key.clone());
     assert_eq!(interner.resolve(id), &key);
     assert_eq!(interner.get(&key), Some(id));
+}
+
+#[test]
+fn derived_keys_with_distinct_op_arcs_are_structurally_equal() {
+    let inputs = vec![
+        GlobalValKey::Input("x".to_string()),
+        GlobalValKey::Input("y".to_string()),
+    ];
+    let lhs = GlobalValKey::<ScalarOp>::Derived {
+        op: Arc::new(GlobalOpKey::new(
+            ScalarOp::Add,
+            inputs.clone(),
+            OpMode::Primal,
+        )),
+        output_slot: 0,
+    };
+    let rhs = GlobalValKey::<ScalarOp>::Derived {
+        op: Arc::new(GlobalOpKey::new(ScalarOp::Add, inputs, OpMode::Primal)),
+        output_slot: 0,
+    };
+
+    assert_eq!(lhs, rhs);
+    assert_eq!(hash_key(&lhs), hash_key(&rhs));
+}
+
+fn hash_key(key: &GlobalValKey<ScalarOp>) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    key.hash(&mut hasher);
+    hasher.finish()
 }
 
 // === Fragment tests ===
@@ -125,14 +156,14 @@ fn fragment_builder_add_op() {
 
     // Verify GlobalValKey structure
     let expected_key = GlobalValKey::Derived {
-        op: GlobalOpKey {
-            primitive: ScalarOp::Add,
-            inputs: vec![
+        op: Arc::new(GlobalOpKey::new(
+            ScalarOp::Add,
+            vec![
                 GlobalValKey::Input("x".to_string()),
                 GlobalValKey::Input("y".to_string()),
             ],
-            mode: OpMode::Primal,
-        },
+            OpMode::Primal,
+        )),
         output_slot: 0,
     };
     assert_eq!(frag.vals()[sum_id].key, expected_key);
