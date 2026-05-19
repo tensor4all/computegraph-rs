@@ -116,17 +116,13 @@ impl<Op: GraphOp> FragmentBuilder<Op> {
             .map(|input| self.resolve_input_key(input))
             .collect();
 
-        let global_op_key = GlobalOpKey {
-            primitive: op.clone(),
-            inputs: global_inputs,
-            mode: mode.clone(),
-        };
+        let global_op_key = Arc::new(GlobalOpKey::new(op.clone(), global_inputs, mode.clone()));
 
         let mut output_ids = Vec::with_capacity(n_outputs);
         for slot in 0..n_outputs {
             let val_id = self.vals.len();
             let key = GlobalValKey::Derived {
-                op: global_op_key.clone(),
+                op: Arc::clone(&global_op_key),
                 output_slot: slot as u8,
             };
             self.vals.push(ValNode {

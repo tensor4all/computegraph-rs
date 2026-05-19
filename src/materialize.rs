@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::resolve::{ResolvedView, ValDef};
 use crate::traits::GraphOp;
@@ -30,7 +31,7 @@ pub struct MaterializedGraph<Op: GraphOp> {
 struct Materializer<'a, Op: GraphOp> {
     view: &'a ResolvedView<Op>,
     val_map: HashMap<GlobalValKey<Op>, usize>,
-    op_map: HashMap<GlobalOpKey<Op>, usize>,
+    op_map: HashMap<Arc<GlobalOpKey<Op>>, usize>,
     vals: Vec<MaterializedVal<Op>>,
     ops: Vec<MaterializedOp<Op>>,
     input_keys: Vec<GlobalValKey<Op>>,
@@ -89,11 +90,11 @@ impl<'a, Op: GraphOp> Materializer<'a, Op> {
         mode: OpMode,
         output_slot: usize,
     ) -> usize {
-        let op_key = GlobalOpKey {
-            primitive: op.clone(),
-            inputs: input_keys.clone(),
-            mode: mode.clone(),
-        };
+        let op_key = Arc::new(GlobalOpKey::new(
+            op.clone(),
+            input_keys.clone(),
+            mode.clone(),
+        ));
 
         if self.op_map.contains_key(&op_key) {
             let output_key = GlobalValKey::Derived {
@@ -115,7 +116,7 @@ impl<'a, Op: GraphOp> Materializer<'a, Op> {
 
         let materialized_inputs = input_keys.iter().map(|input| self.visit(input)).collect();
         let op_index = self.ops.len();
-        self.op_map.insert(op_key.clone(), op_index);
+        self.op_map.insert(Arc::clone(&op_key), op_index);
         self.ops.push(MaterializedOp {
             op: op.clone(),
             inputs: materialized_inputs,
@@ -125,7 +126,7 @@ impl<'a, Op: GraphOp> Materializer<'a, Op> {
 
         for slot in 0..op.n_outputs() {
             let output_key = GlobalValKey::Derived {
-                op: op_key.clone(),
+                op: Arc::clone(&op_key),
                 output_slot: slot as u8,
             };
             let val_index = self.vals.len();
