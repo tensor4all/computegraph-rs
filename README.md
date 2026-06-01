@@ -1,17 +1,17 @@
 # computegraph-rs
 
-AD-agnostic tensor computation graph engine in Rust.
+Operation-agnostic computation graph engine in Rust.
 
-Provides fragment-based graph construction, logical resolution,
+Provides graph construction, logical resolution,
 physical materialization, SSA compilation, and evaluation.
 
-Fully generic over `Op: GraphOp` — never references specific primitives.
+Fully generic over `Operation: GraphOperation`; it never references specific
+primitive operation sets.
 
 ## Part of the tensor4all v2 stack
 
 ```text
 computegraph-rs  ← this crate
-chainrules-rs    ← AD trait definitions
 tidu-rs          ← AD graph transforms
 tenferro-rs      ← concrete tensor primitives
 ```

@@ -1,7 +1,7 @@
 use crate::compile::CompiledProgram;
-use crate::traits::EvalGraphOp;
+use crate::traits::EvaluableGraphOperation;
 
-impl<Op: EvalGraphOp> CompiledProgram<Op> {
+impl<Op: EvaluableGraphOperation> CompiledProgram<Op> {
     /// Executes the compiled program with the given inputs.
     pub fn eval(&self, ctx: &mut Op::Context, inputs: &[&Op::Operand]) -> Vec<Op::Operand> {
         assert_eq!(
@@ -31,12 +31,12 @@ impl<Op: EvalGraphOp> CompiledProgram<Op> {
                 })
                 .collect();
 
-            let outputs = instruction.op.eval(ctx, &input_vals);
+            let outputs = instruction.operation.eval(ctx, &input_vals);
             assert_eq!(
                 outputs.len(),
                 instruction.outputs.len(),
                 "operation {:?} produced {} outputs, expected {}",
-                instruction.op,
+                instruction.operation,
                 outputs.len(),
                 instruction.outputs.len()
             );
