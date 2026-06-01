@@ -2,12 +2,12 @@
 
 pub mod compile;
 mod eval;
-pub mod fragment;
+pub mod graph;
 pub mod interner;
 pub mod materialize;
 pub mod resolve;
 pub mod traits;
 pub mod types;
 
-pub use traits::{EvalGraphOp, GraphOp, OpEmitter};
-pub use types::{GlobalOpKey, GlobalValKey, LocalOpId, LocalValId, OpMode, ValRef};
+pub use traits::{EvaluableGraphOperation, GraphOperation};
+pub use types::{LocalOperationId, LocalValueId, OperationKey, OperationRole, ValueKey, ValueRef};

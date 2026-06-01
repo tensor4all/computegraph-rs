@@ -1,20 +1,20 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
-use crate::traits::GraphOp;
-use crate::types::GlobalValKey;
+use crate::traits::GraphOperation;
+use crate::types::ValueKey;
 
-/// Interned identity for O(1) equality comparison of [`GlobalValKey`].
+/// Interned identity for O(1) equality comparison of [`ValueKey`].
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-pub struct ValKeyId(u32);
+pub struct ValueKeyId(u32);
 
-/// Maps [`GlobalValKey`] to [`ValKeyId`] for fast equality and deduplication.
-pub struct KeyInterner<Op: GraphOp> {
-    map: HashMap<GlobalValKey<Op>, ValKeyId>,
-    keys: Vec<GlobalValKey<Op>>,
+/// Maps [`ValueKey`] to [`ValueKeyId`] for fast equality and deduplication.
+pub struct ValueKeyInterner<Op: GraphOperation> {
+    map: HashMap<ValueKey<Op>, ValueKeyId>,
+    keys: Vec<ValueKey<Op>>,
 }
 
-impl<Op: GraphOp> KeyInterner<Op> {
+impl<Op: GraphOperation> ValueKeyInterner<Op> {
     /// Creates an empty interner.
     pub fn new() -> Self {
         Self {
@@ -24,7 +24,7 @@ impl<Op: GraphOp> KeyInterner<Op> {
     }
 
     /// Interns a key, returning its unique id.
-    pub fn intern(&mut self, key: GlobalValKey<Op>) -> ValKeyId {
+    pub fn intern(&mut self, key: ValueKey<Op>) -> ValueKeyId {
         match self.map.entry(key.clone()) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
@@ -33,7 +33,7 @@ impl<Op: GraphOp> KeyInterner<Op> {
                     "too many interned value keys: {}",
                     self.keys.len()
                 );
-                let id = ValKeyId(self.keys.len() as u32);
+                let id = ValueKeyId(self.keys.len() as u32);
                 self.keys.push(key);
                 entry.insert(id);
                 id
@@ -42,12 +42,12 @@ impl<Op: GraphOp> KeyInterner<Op> {
     }
 
     /// Looks up the id for a key without interning it.
-    pub fn get(&self, key: &GlobalValKey<Op>) -> Option<ValKeyId> {
+    pub fn get(&self, key: &ValueKey<Op>) -> Option<ValueKeyId> {
         self.map.get(key).copied()
     }
 
     /// Retrieves the full key from an id.
-    pub fn resolve(&self, id: ValKeyId) -> &GlobalValKey<Op> {
+    pub fn resolve(&self, id: ValueKeyId) -> &ValueKey<Op> {
         let index = id.0 as usize;
         assert!(
             index < self.keys.len(),
@@ -58,7 +58,7 @@ impl<Op: GraphOp> KeyInterner<Op> {
     }
 }
 
-impl<Op: GraphOp> Default for KeyInterner<Op> {
+impl<Op: GraphOperation> Default for ValueKeyInterner<Op> {
     fn default() -> Self {
         Self::new()
     }

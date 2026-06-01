@@ -2,49 +2,49 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
-use crate::traits::GraphOp;
+use crate::traits::GraphOperation;
 
-/// Fragment-local value identifier.
-pub type LocalValId = usize;
+/// Graph-local value identifier.
+pub type LocalValueId = usize;
 
-/// Fragment-local operation identifier.
-pub type LocalOpId = usize;
+/// Graph-local operation identifier.
+pub type LocalOperationId = usize;
 
-/// Distinguishes primal nodes from linear (AD-generated) nodes.
+/// Describes the role an operation plays in a graph.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum OpMode {
-    Primal,
-    Linear { active_mask: Vec<bool> },
+pub enum OperationRole {
+    Primary,
+    Linearized { active_mask: Vec<bool> },
 }
 
-/// Reference to a value: either local to the current fragment or external.
+/// Reference to a value: either local to the current graph or external.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ValRef<Op: GraphOp> {
-    Local(LocalValId),
-    External(GlobalValKey<Op>),
+pub enum ValueRef<Op: GraphOperation> {
+    Local(LocalValueId),
+    External(ValueKey<Op>),
 }
 
-/// Cross-fragment structural identity for a value.
+/// Cross-graph structural identity for a value.
 #[derive(Clone, Debug)]
-pub enum GlobalValKey<Op: GraphOp> {
+pub enum ValueKey<Op: GraphOperation> {
     Input(Op::InputKey),
     Derived {
         /// Shared structural identity of the operation that produced this value.
-        op: Arc<GlobalOpKey<Op>>,
+        operation: Arc<OperationKey<Op>>,
         output_slot: u8,
     },
 }
 
-/// Cross-fragment structural identity for an operation.
+/// Cross-graph structural identity for an operation.
 ///
-/// `GlobalOpKey` caches a structural fingerprint so maps keyed by recursively
+/// `OperationKey` caches a structural fingerprint so maps keyed by recursively
 /// derived values can avoid repeatedly re-hashing the whole input tree. Equality
 /// still checks the full structure after the fingerprint prefilter.
 #[derive(Clone, Debug)]
-pub struct GlobalOpKey<Op: GraphOp> {
-    primitive: Op,
-    inputs: Vec<GlobalValKey<Op>>,
-    mode: OpMode,
+pub struct OperationKey<Op: GraphOperation> {
+    operation: Op,
+    inputs: Vec<ValueKey<Op>>,
+    role: OperationRole,
     /// Cached hash prefilter for recursively structural keys.
     ///
     /// This is not an identity proof: equality still compares the full
@@ -53,41 +53,42 @@ pub struct GlobalOpKey<Op: GraphOp> {
     fingerprint: u64,
 }
 
-impl<Op: GraphOp> GlobalOpKey<Op> {
+impl<Op: GraphOperation> OperationKey<Op> {
     /// Builds an operation key and precomputes its structural fingerprint.
     ///
     /// # Examples
     ///
-    /// ```ignore
-    /// use computegraph::{GlobalOpKey, GlobalValKey, GraphOp, OpMode};
+    /// ```
+    /// use computegraph::{GraphOperation, OperationKey, OperationRole, ValueKey};
     ///
     /// #[derive(Clone, Debug, Hash, PartialEq, Eq)]
     /// enum Op {
     ///     Add,
     /// }
     ///
-    /// impl GraphOp for Op {
+    /// impl GraphOperation for Op {
     ///     type Operand = f64;
     ///     type Context = ();
     ///     type InputKey = &'static str;
     ///
-    ///     fn n_inputs(&self) -> usize { 2 }
-    ///     fn n_outputs(&self) -> usize { 1 }
+    ///     fn input_count(&self) -> usize { 2 }
+    ///     fn output_count(&self) -> usize { 1 }
     /// }
     ///
-    /// let key = GlobalOpKey::new(
+    /// let key = OperationKey::new(
     ///     Op::Add,
-    ///     vec![GlobalValKey::Input("x"), GlobalValKey::Input("y")],
-    ///     OpMode::Primal,
+    ///     vec![ValueKey::Input("x"), ValueKey::Input("y")],
+    ///     OperationRole::Primary,
     /// );
     /// assert_eq!(key.inputs().len(), 2);
+    /// assert_eq!(key.role(), &OperationRole::Primary);
     /// ```
-    pub fn new(primitive: Op, inputs: Vec<GlobalValKey<Op>>, mode: OpMode) -> Self {
-        let fingerprint = fingerprint_op(&primitive, &inputs, &mode);
+    pub fn new(operation: Op, inputs: Vec<ValueKey<Op>>, role: OperationRole) -> Self {
+        let fingerprint = fingerprint_operation(&operation, &inputs, &role);
         Self {
-            primitive,
+            operation,
             inputs,
-            mode,
+            role,
             fingerprint,
         }
     }
@@ -97,33 +98,33 @@ impl<Op: GraphOp> GlobalOpKey<Op> {
         self.fingerprint
     }
 
-    /// Returns the operation primitive.
-    pub fn primitive(&self) -> &Op {
-        &self.primitive
+    /// Returns the operation.
+    pub fn operation(&self) -> &Op {
+        &self.operation
     }
 
     /// Returns the structural input keys.
-    pub fn inputs(&self) -> &[GlobalValKey<Op>] {
+    pub fn inputs(&self) -> &[ValueKey<Op>] {
         &self.inputs
     }
 
-    /// Returns whether this operation belongs to the primal or linear graph.
-    pub fn mode(&self) -> &OpMode {
-        &self.mode
+    /// Returns the role of this operation in the graph.
+    pub fn role(&self) -> &OperationRole {
+        &self.role
     }
 }
 
-impl<Op: GraphOp> PartialEq for GlobalValKey<Op> {
+impl<Op: GraphOperation> PartialEq for ValueKey<Op> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Input(lhs), Self::Input(rhs)) => lhs == rhs,
             (
                 Self::Derived {
-                    op: lhs_op,
+                    operation: lhs_op,
                     output_slot: lhs_slot,
                 },
                 Self::Derived {
-                    op: rhs_op,
+                    operation: rhs_op,
                     output_slot: rhs_slot,
                 },
             ) => {
@@ -135,45 +136,52 @@ impl<Op: GraphOp> PartialEq for GlobalValKey<Op> {
     }
 }
 
-impl<Op: GraphOp> Eq for GlobalValKey<Op> {}
+impl<Op: GraphOperation> Eq for ValueKey<Op> {}
 
-impl<Op: GraphOp> Hash for GlobalValKey<Op> {
+impl<Op: GraphOperation> Hash for ValueKey<Op> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
             Self::Input(key) => {
                 0u8.hash(state);
                 key.hash(state);
             }
-            Self::Derived { op, output_slot } => {
+            Self::Derived {
+                operation,
+                output_slot,
+            } => {
                 1u8.hash(state);
-                op.fingerprint.hash(state);
+                operation.fingerprint.hash(state);
                 output_slot.hash(state);
             }
         }
     }
 }
 
-impl<Op: GraphOp> PartialEq for GlobalOpKey<Op> {
+impl<Op: GraphOperation> PartialEq for OperationKey<Op> {
     fn eq(&self, other: &Self) -> bool {
         self.fingerprint == other.fingerprint
-            && self.primitive == other.primitive
-            && self.mode == other.mode
+            && self.operation == other.operation
+            && self.role == other.role
             && self.inputs == other.inputs
     }
 }
 
-impl<Op: GraphOp> Eq for GlobalOpKey<Op> {}
+impl<Op: GraphOperation> Eq for OperationKey<Op> {}
 
-impl<Op: GraphOp> Hash for GlobalOpKey<Op> {
+impl<Op: GraphOperation> Hash for OperationKey<Op> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.fingerprint.hash(state);
     }
 }
 
-fn fingerprint_op<Op: GraphOp>(primitive: &Op, inputs: &[GlobalValKey<Op>], mode: &OpMode) -> u64 {
+fn fingerprint_operation<Op: GraphOperation>(
+    operation: &Op,
+    inputs: &[ValueKey<Op>],
+    role: &OperationRole,
+) -> u64 {
     let mut hasher = DefaultHasher::new();
-    primitive.hash(&mut hasher);
-    mode.hash(&mut hasher);
+    operation.hash(&mut hasher);
+    role.hash(&mut hasher);
     inputs.len().hash(&mut hasher);
     for input in inputs {
         fingerprint_val(input).hash(&mut hasher);
@@ -181,7 +189,7 @@ fn fingerprint_op<Op: GraphOp>(primitive: &Op, inputs: &[GlobalValKey<Op>], mode
     hasher.finish()
 }
 
-fn fingerprint_val<Op: GraphOp>(key: &GlobalValKey<Op>) -> u64 {
+fn fingerprint_val<Op: GraphOperation>(key: &ValueKey<Op>) -> u64 {
     let mut hasher = DefaultHasher::new();
     key.hash(&mut hasher);
     hasher.finish()
