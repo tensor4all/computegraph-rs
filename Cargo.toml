@@ -2,6 +2,7 @@
 name = "computegraph"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.56"
 authors = ["Hiroshi Shinaoka <h.shinaoka@gmail.com>"]
 license = "MIT OR Apache-2.0"
 description = "AD-agnostic tensor computation graph engine: construction, logical resolution, physical materialization, SSA compilation, and evaluation."
