@@ -2,6 +2,15 @@
 
 Read `README.md` before starting work.
 
+## Shared Tensor4all Rules
+
+Cross-repository agent rules live in
+[`tensor4all/tensor4all-agent-rules`](https://github.com/tensor4all/tensor4all-agent-rules).
+Prefer the latest online version; if offline, use a sibling checkout at
+`../tensor4all-agent-rules`. Read `rules/index.md` first, then load only the
+rule files relevant to the task. The guidelines below are computegraph-specific
+and take precedence for this repository.
+
 ## General Guidelines
 
 - Always think/reason in English (set thinking language to English)
