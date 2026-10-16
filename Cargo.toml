@@ -12,3 +12,9 @@ keywords = ["computation-graph", "tensor", "compiler", "graph", "ssa"]
 categories = ["data-structures", "mathematics"]
 
 [workspace]
+
+[profile.dev]
+debug = 0
+
+[profile.test]
+debug = 0
