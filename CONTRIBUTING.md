@@ -19,11 +19,15 @@ This file only records what is specific to `computegraph-rs`:
 
 ## Anything here that departs from the shared rules
 
-Two do:
+Three do:
 
 - There is no `clippy` job; the pipeline is `rustfmt`, `nextest` and doctests only. Run
   `cargo clippy --workspace --all-targets -- -D warnings` locally until a job exists.
 - There is no `msrv` gate, and `rust-version = "1.56"` is far enough behind `stable` that it will not stay true by
   accident.
+- There is no warning-denying rustdoc build and no `body` gate. Nothing runs `cargo doc` with
+  `RUSTDOCFLAGS="-D warnings"`, and the documented `cargo test --doc --workspace --release` only runs doctest
+  examples, so it does not establish that the public documentation builds without warnings. No workflow step checks
+  the pull-request body's `## Verification` section.
 
-Both are gaps to close, not exemptions from the other gates.
+All three are gaps to close, not exemptions from the other gates.
